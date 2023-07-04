@@ -9,8 +9,9 @@ public class GameManager : MonoBehaviour
     [Tooltip("Variable that dictates how many items a page would have")]
     [SerializeField] private int _pageMaxElementCount = 5;
 
-    private int _currentPage = 0;
-    private int _maxPage;
+    //should be in range 0-_maxPage inclusive
+    private int _currentPageIndex = 0;
+    private int _maxPageIndex;
 
     void Awake()
     {
@@ -26,8 +27,7 @@ public class GameManager : MonoBehaviour
         //Initialize server and get the maximum number of pages
         var dataTask = _serverConnectionHandler.Initialize(_pageMaxElementCount);
         await dataTask;
-        _maxPage = dataTask.Result;
-        Debug.Log(_maxPage);
+        _maxPageIndex = dataTask.Result;
 
         //Initialize gui
         _guiManager.Initialize(_pageMaxElementCount, OnPreviousPageButtonClicked, OnNextPageButtonClicked);
@@ -49,28 +49,30 @@ public class GameManager : MonoBehaviour
 
     private void TurnPage(int value)
     {
-        TurnPageTo(_currentPage + value);
+        TurnPageTo(_currentPageIndex + value);
     }
 
-    private void TurnPageTo(int value)
+    private void TurnPageTo(int pageNumber)
     {
+        Debug.Log($"Turning page to {pageNumber}");
+        
         //Show loading screen
         _guiManager.ToggleLoadingScreenTo(true);
 
         //Make sure buttons are disabled during the loading
         _guiManager.UpdateButtonsInteractable(false, false);
 
-        _currentPage = value;
+        _currentPageIndex = pageNumber;
 
         _serverConnectionHandler.GetDataForPage(
-            _currentPage,
+            _currentPageIndex,
             data =>
             {
                 //Update GUI with recieved data
                 _guiManager.UpdateGUI(data);
 
                 //Turn buttons back on
-                _guiManager.UpdateButtonsInteractable(_currentPage > 0, _currentPage < _maxPage);
+                _guiManager.UpdateButtonsInteractable(_currentPageIndex > 0, _currentPageIndex < _maxPageIndex);
 
                 //Hide loading screen
                 _guiManager.ToggleLoadingScreenTo(false);

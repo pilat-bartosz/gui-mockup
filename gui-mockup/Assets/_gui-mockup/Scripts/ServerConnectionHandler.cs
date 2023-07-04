@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -15,7 +16,7 @@ public class ServerConnectionHandler : MonoBehaviour
     private CancellationTokenSource _cancellationTokenSource;
 
     private int _dataCount;
-    private int _maxPageCount;
+    private int _lastPageIndex;
     private int _pageSize;
 
     private DataItem[] _dataItems;
@@ -35,7 +36,7 @@ public class ServerConnectionHandler : MonoBehaviour
     /// Initialize server "data layout" based on page size.
     /// </summary>
     /// <param name="pageSize">Maximum number of elements per page</param>
-    /// <returns>Maximum number of pages based on available data</returns>
+    /// <returns>Index of last page</returns>
     public async Task<int> Initialize(int pageSize)
     {
         _pageSize = pageSize;
@@ -47,38 +48,41 @@ public class ServerConnectionHandler : MonoBehaviour
         Debug.Log($"Data count {_dataCount}");
 
         _dataItems = new DataItem[_dataCount];
-        _maxPageCount = Mathf.CeilToInt((float)_dataCount / pageSize);
+        var pageCount = Mathf.CeilToInt((float)_dataCount / pageSize);
 
-        _dataPageAvailability = new bool[_maxPageCount];
+        _dataPageAvailability = new bool[pageCount];
+        _lastPageIndex = pageCount - 1;
 
-        return _maxPageCount;
+        Debug.Log($"Last page index - {_lastPageIndex}");
+
+        return _lastPageIndex;
     }
 
     /// <summary>
     /// Gets the data for a page.
     /// Additionally it will request the data for the next/previous page.
     /// </summary>
-    /// <param name="pageNumber">Page number</param>
+    /// <param name="pageIndex">Should be in range 0-_lastPageIndex</param>
     /// <param name="elementCount">Number of elements in the page</param>
     /// <param name="callback">Callback for that set of data</param>
-    public void GetDataForPage(int pageNumber, Action<IList<DataItem>> callback)
+    public void GetDataForPage(int pageIndex, Action<IList<DataItem>> callback)
     {
-        Assert.IsTrue(CheckPageNumberRange(pageNumber),
-            $"Page number: {pageNumber} in not between 0 and {_maxPageCount}"
+        Assert.IsTrue(CheckPageNumberRange(pageIndex),
+            $"Page number: {pageIndex} in not between 0 and {_lastPageIndex}"
         );
 
-        RequestDataForPage(pageNumber, callback);
+        RequestDataForPage(pageIndex, callback);
 
         //check if there is data in cache for nearby pages already
         if (_shouldRequestNearbyPages)
         {
-            var previousPage = pageNumber - 1;
+            var previousPage = pageIndex - 1;
             if (CheckPageNumberRange(previousPage))
             {
                 RequestDataForPage(previousPage);
             }
 
-            var nextPage = pageNumber + 1;
+            var nextPage = pageIndex + 1;
             if (CheckPageNumberRange(nextPage))
             {
                 RequestDataForPage(nextPage);
@@ -109,16 +113,16 @@ public class ServerConnectionHandler : MonoBehaviour
         var dataTask = _dataServerMock.RequestData(
             startIndex,
             length,
-            _cancellationTokenSource.Token);
+            cancellationToken);
         await dataTask;
         callback.Invoke(dataTask.Result);
     }
 
     #region Helper_Methods
 
-    private bool CheckPageNumberRange(int pageNumber)
+    private bool CheckPageNumberRange(int pageIndex)
     {
-        return pageNumber >= 0 && pageNumber < _maxPageCount;
+        return pageIndex >= 0 && pageIndex <= _lastPageIndex;
     }
 
     /// <summary>
@@ -130,6 +134,8 @@ public class ServerConnectionHandler : MonoBehaviour
     {
         Assert.IsTrue(CheckPageNumberRange(pageNumber));
 
+        //Debug.Log($"Requesting data for page {pageNumber}-{_dataPageAvailability[pageNumber]}");
+
         if (_dataPageAvailability[pageNumber])
         {
             callback?.Invoke(GetDataForPage(pageNumber));
@@ -140,31 +146,36 @@ public class ServerConnectionHandler : MonoBehaviour
         }
     }
 
-    private IList<DataItem> GetDataForPage(int pageNumber)
+    private IList<DataItem> GetDataForPage(int pageIndex)
     {
-        Assert.IsTrue(CheckPageNumberRange(pageNumber));
+        Assert.IsTrue(CheckPageNumberRange(pageIndex));
+        Assert.IsNotNull(_dataItems);
+        Assert.IsNotNull(_dataItems[pageIndex * _pageSize]);
 
-        return _dataItems.ToList().GetRange(pageNumber * _pageSize, _pageSize);
+        return _dataItems.ToList()
+            .GetRange(pageIndex * _pageSize,
+                pageIndex == _lastPageIndex ? _dataCount % _pageSize : _pageSize
+            );
     }
 
     /// <summary>
     /// Requests new data from the server for a page.
     /// </summary>
-    /// <param name="pageNumber"></param>
+    /// <param name="pageIndex"></param>
     /// <param name="callback"></param>
-    private void RequestNewDataForPage(int pageNumber, Action<IList<DataItem>> callback)
+    private void RequestNewDataForPage(int pageIndex, Action<IList<DataItem>> callback)
     {
-        Assert.IsTrue(CheckPageNumberRange(pageNumber));
+        Assert.IsTrue(CheckPageNumberRange(pageIndex));
 
         RequestNewData(
-            pageNumber * _pageSize,
-            _pageSize,
+            pageIndex * _pageSize,
+            pageIndex == _lastPageIndex ? _dataCount % _pageSize : _pageSize,
             _cancellationTokenSource.Token,
             data =>
             {
                 //copy data to cache
-                data.CopyTo(_dataItems.ToArray(), pageNumber * _pageSize);
-                _dataPageAvailability[pageNumber] = true;
+                data.CopyTo(_dataItems, pageIndex * _pageSize);
+                _dataPageAvailability[pageIndex] = true;
 
                 //callback
                 callback?.Invoke(data);

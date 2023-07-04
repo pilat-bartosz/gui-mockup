@@ -4,7 +4,8 @@
 	{
 		RED,
 		GREEN,
-		BLUE
+		BLUE,
+		LENGTH
 	}
 
 	public readonly CategoryType Category;

@@ -1,41 +1,45 @@
 using System.Collections.Generic;
+using _gui_mockup.DataServer;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.UI;
 
-public class ListElement : MonoBehaviour
+namespace _gui_mockup.UI
 {
-    [Tooltip("Should be in the order of DataItem.CategoryType")] [SerializeField]
-    private List<Sprite> _badgeSprites;
-
-    [Header("References")]
-    [SerializeField] private Image _badgeImage;
-    [SerializeField] private GameObject _glowObject;
-    [SerializeField] private TextMeshProUGUI _numberText;
-    [SerializeField] private TextMeshProUGUI _text;
-
-    private void Awake()
+    public class ListElement : MonoBehaviour
     {
-        Assert.IsNotNull(_badgeSprites);
-        Assert.IsTrue(_badgeSprites.Count == (int)DataItem.CategoryType.LENGTH,
-            "Badge images should be assigned properly"
-        );
-    }
+        [Tooltip("Should be in the order of DataItem.CategoryType")] [SerializeField]
+        private List<Sprite> _badgeSprites;
 
-    public void UpdateElement(DataItem.CategoryType type, string number, string text, bool isSpecial)
-    {
-        _badgeImage.sprite = _badgeSprites[(int)type];
-        _numberText.text = number;
-        _text.text = text;
+        [Header("References")]
+        [SerializeField] private Image _badgeImage;
+        [SerializeField] private GameObject _glowObject;
+        [SerializeField] private TextMeshProUGUI _numberText;
+        [SerializeField] private TextMeshProUGUI _text;
+
+        private void Awake()
+        {
+            Assert.IsNotNull(_badgeSprites);
+            Assert.IsTrue(_badgeSprites.Count == (int)DataItem.CategoryType.LENGTH,
+                "Badge images should be assigned properly"
+            );
+        }
+
+        public void UpdateElement(DataItem.CategoryType type, string number, string text, bool isSpecial)
+        {
+            _badgeImage.sprite = _badgeSprites[(int)type];
+            _numberText.text = number;
+            _text.text = text;
         
-        _glowObject.SetActive(isSpecial);
+            _glowObject.SetActive(isSpecial);
         
-        gameObject.SetActive(true);
-    }
+            gameObject.SetActive(true);
+        }
 
-    public void Disable()
-    {
-        gameObject.SetActive(false);
+        public void Disable()
+        {
+            gameObject.SetActive(false);
+        }
     }
 }

@@ -1,11 +1,14 @@
 using UnityEngine;
 
-public class LoadingIcon : MonoBehaviour
+namespace _gui_mockup.UI
 {
-    [SerializeField] private float _rotationSpeed;
-
-    private void Update()
+    public class LoadingIcon : MonoBehaviour
     {
-        transform.Rotate(Vector3.forward, _rotationSpeed * Time.deltaTime);
+        [SerializeField] private float _rotationSpeed;
+
+        private void Update()
+        {
+            transform.Rotate(Vector3.forward, _rotationSpeed * Time.deltaTime);
+        }
     }
 }

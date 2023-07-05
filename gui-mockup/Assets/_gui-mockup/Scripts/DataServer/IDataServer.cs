@@ -2,8 +2,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-public interface IDataServer
+namespace _gui_mockup.DataServer
 {
-	Task<int> DataAvailable(CancellationToken ct);
-	Task<IList<DataItem>> RequestData(int index, int count, CancellationToken ct);
+	public interface IDataServer
+	{
+		Task<int> DataAvailable(CancellationToken ct);
+		Task<IList<DataItem>> RequestData(int index, int count, CancellationToken ct);
+	}
 }
